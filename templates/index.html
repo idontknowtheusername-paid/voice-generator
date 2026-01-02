@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge TTS - Synthèse vocale</title>
+    <style>
+        * { 
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes slide {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(400%); }
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #1a1a2e);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(0,217,255,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            top: -250px;
+            right: -250px;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        body::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(0,255,136,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            bottom: -200px;
+            left: -200px;
+            animation: float 8s ease-in-out infinite reverse;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 50px 40px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.4),
+                        inset 0 1px 0 rgba(255,255,255,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: slideIn 0.6s ease-out;
+            position: relative;
+            z-index: 1;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00d9ff 0%, #00ff88 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.95rem;
+            margin-bottom: 40px;
+            font-weight: 400;
+        }
+        
+        .input-wrapper {
+            position: relative;
+            margin-bottom: 25px;
+        }
+        
+        .voice-select {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            margin-bottom: 20px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 20px;
+        }
+        
+        .voice-select:focus {
+            outline: none;
+            border-color: #00d9ff;
+            box-shadow: 0 0 0 4px rgba(0, 217, 255, 0.1);
+        }
+        
+        .voice-select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 160px;
+            padding: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            font-size: 16px;
+            resize: vertical;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            line-height: 1.6;
+        }
+        
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #00d9ff;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 4px rgba(0, 217, 255, 0.1);
+        }
+        
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        button {
+            padding: 18px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-family: inherit;
+            letter-spacing: 0.3px;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        button:active::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .listen {
+            background: linear-gradient(135deg, #00d9ff 0%, #00b8d4 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+        }
+        
+        .listen:hover {
+            box-shadow: 0 10px 30px rgba(0, 217, 255, 0.4);
+        }
+        
+        .download {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .download:hover {
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        #status {
+            text-align: center;
+            min-height: 24px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.95rem;
+            margin-top: 15px;
+            font-weight: 500;
+        }
+        
+        .progress-container {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+            display: none;
+            padding: 3px;
+        }
+        
+        .progress-wrapper {
+            position: relative;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            border-radius: 8px;
+            width: 0%;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 0.85rem;
+            font-weight: 600;
+            z-index: 2;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+        
+        audio {
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        audio::-webkit-media-controls-panel {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .icon {
+            display: inline-block;
+            margin-right: 8px;
+            font-size: 1.1em;
+        }
+        
+        @media (max-width: 640px) {
+            .container {
+                padding: 40px 25px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Edge TTS</h1>
+        <div class="subtitle">Synthèse vocale naturelle</div>
+        
+        <select id="voice" class="voice-select">
+            <option value="denise">Denise (Femme) - Naturelle</option>
+            <option value="henri">Henri (Homme) - Naturel</option>
+            <option value="eloise">Éloïse (Femme) - Douce</option>
+            <option value="brigitte">Charline (Femme BE) - Belge</option>
+            <option value="gerard">Gérard (Homme BE) - Belge</option>
+            <option value="ariane">Ariane (Femme CH) - Suisse</option>
+            <option value="fabrice">Fabrice (Homme CH) - Suisse</option>
+            <option value="sylvie">Sylvie (Femme CA) - Québécois</option>
+            <option value="antoine">Antoine (Homme CA) - Québécois</option>
+        </select>
+        
+        <div class="input-wrapper">
+            <textarea id="text" placeholder="Entrez votre texte ici pour le transformer en audio..."></textarea>
+        </div>
+        
+        <div class="buttons">
+            <button class="listen" onclick="listen()">
+                <span class="icon">🔊</span>Écouter
+            </button>
+            <button class="download" onclick="download()">
+                <span class="icon">⬇️</span>Télécharger
+            </button>
+        </div>
+        
+        <div class="progress-container" id="progress">
+            <div class="progress-wrapper">
+                <div class="progress-bar" id="progressBar"></div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+        </div>
+        
+        <div id="status"></div>
+        
+        <audio id="player" controls style="display:none;"></audio>
+    </div>
+
+    <script>
+        const text = document.getElementById('text');
+        const voice = document.getElementById('voice');
+        const status = document.getElementById('status');
+        const player = document.getElementById('player');
+        const progress = document.getElementById('progress');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        let progressInterval = null;
+
+        function showProgress() {
+            progress.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+        }
+
+        function startProgressAnimation(textLength) {
+            let percent = 0;
+            const estimatedTime = Math.max(2000, textLength * 50);
+            const increment = 100 / (estimatedTime / 100);
+            
+            progressInterval = setInterval(() => {
+                if (percent < 90) {
+                    percent += increment * (1 - percent / 100);
+                    updateProgress(Math.min(percent, 90));
+                }
+            }, 100);
+        }
+
+        function stopProgressAnimation() {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            updateProgress(100);
+        }
+
+        function updateProgress(percent) {
+            progressBar.style.width = percent + '%';
+            progressText.textContent = Math.round(percent) + '%';
+        }
+
+        function hideProgress() {
+            setTimeout(() => {
+                progress.style.display = 'none';
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+            }, 500);
+        }
+
+        async function listen() {
+            if (!text.value.trim()) return;
+            status.textContent = 'Génération en cours...';
+            showProgress();
+            startProgressAnimation(text.value.length);
+            
+            try {
+                const res = await fetch('/synthesize', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: text.value, voice: voice.value})
+                });
+                
+                stopProgressAnimation();
+                
+                if (!res.ok) throw new Error('Erreur');
+                
+                const blob = await res.blob();
+                player.src = URL.createObjectURL(blob);
+                player.style.display = 'block';
+                player.play();
+                status.textContent = '';
+            } catch (e) {
+                stopProgressAnimation();
+                status.textContent = 'Erreur de synthèse';
+            }
+            hideProgress();
+        }
+
+        async function download() {
+            if (!text.value.trim()) return;
+            status.textContent = 'Génération en cours...';
+            showProgress();
+            startProgressAnimation(text.value.length);
+            
+            try {
+                const res = await fetch('/download', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: text.value, voice: voice.value})
+                });
+                
+                stopProgressAnimation();
+                
+                if (!res.ok) throw new Error('Erreur');
+                
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'audio_' + Date.now() + '.wav';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                status.textContent = 'Fichier enregistré dans Téléchargements !';
+            } catch (e) {
+                stopProgressAnimation();
+                status.textContent = 'Erreur de synthèse';
+            }
+            hideProgress();
+        }
+    </script>
+</body>
+</html>
